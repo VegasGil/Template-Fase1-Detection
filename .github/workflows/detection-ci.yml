@@ -6,12 +6,16 @@ on:
     paths:
       - 'detections/**'
       - 'tests/**'
+      - 'scripts/**'
+      - 'requirements.txt'
       - '.github/workflows/detection-ci.yml'
   pull_request:
     branches: [main]
     paths:
       - 'detections/**'
       - 'tests/**'
+      - 'scripts/**'
+      - 'requirements.txt'
 
 jobs:
   validate-and-deploy:
@@ -35,7 +39,7 @@ jobs:
       - name: Pytest (Validar lógica)
         run: pytest -v
 
-      # ESTE ES EL NUEVO PASO MÁGICO
+      # EL PASO MÁGICO
       - name: Deploy to Splunk (Solo en la rama main)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
