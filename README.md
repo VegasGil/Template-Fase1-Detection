@@ -16,3 +16,6 @@ Plantilla base para inicializar la validación de reglas de detección (Sigma) p
 2. Crea el archivo de eventos en `tests/events/` con el mismo nombre.
 3. Ejecuta `pytest -v` para validar que la lógica funciona.
 pip freeze > requirements.txt
+
+## Nota sobre el SIEM (Splunk)
+Para que la regla Sigma funcione con logs de texto plano, es necesario configurar una extracción de campos (Field Extraction) en Splunk para el `sourcetype` correspondiente, mapeando el campo `CommandLine` al texto del evento. En entornos reales con Sysmon o Auditd, esta extracción ya viene preconfigurada por los Add-ons oficiales.

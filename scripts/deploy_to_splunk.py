@@ -42,7 +42,9 @@ def deploy_to_splunk(query, rule_path, splunk_host, splunk_port, username, passw
         "alert_threshold": "0",
         "alert.severity": "4",
         "action.email": "0",
-        "action.notable": "1"
+        # Estas dos líneas son las que envían la alerta a la pestaña "Triggered Alerts"
+        "action.notable": "1", 
+        "action.notable.param.severity": "high"
     }
 
     # 1. Verificar si la alerta ya existe (GET)
