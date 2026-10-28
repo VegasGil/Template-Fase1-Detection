@@ -1,4 +1,4 @@
-name: Detection CI (Template)
+name: Detection CI
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
       - 'tests/**'
 
 jobs:
-  validate-rules:
+  validate-and-deploy:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -29,8 +29,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Sigma check
+      - name: Sigma check (Validar sintaxis)
         run: sigma check --fail-on-issues detections/
 
-      - name: Pytest
+      - name: Pytest (Validar lógica)
         run: pytest -v
+
+      # ESTE ES EL NUEVO PASO MÁGICO
+      - name: Deploy to Splunk (Solo en la rama main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          SPLUNK_HOST: ${{ secrets.SPLUNK_HOST }}
+          SPLUNK_PASSWORD: ${{ secrets.SPLUNK_PASSWORD }}
+        run: |
+          python scripts/deploy_to_splunk.py \
+            --rule detections/linux/proc_creation_linux_reverse_shell.yml \
+            --host $SPLUNK_HOST \
+            --password $SPLUNK_PASSWORD
