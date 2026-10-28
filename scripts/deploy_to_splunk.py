@@ -27,12 +27,13 @@ def deploy_to_splunk(query, rule_path, splunk_host, splunk_port, username, passw
         rule_data = yaml.safe_load(f)
     rule_title = f"Sigma - {rule_data.get('title', 'Custom Rule')}"
 
-    print(f"[*] Desplegando alerta '{rule_title}' en Splunk...")
+    print(f"[*] Procesando alerta '{rule_title}'...")
 
     base_url = f"https://{splunk_host}:{splunk_port}/services/saved/searches"
-    
+    encoded_name = urllib.parse.quote(rule_title)
+    specific_url = f"{base_url}/{encoded_name}"
+
     payload = {
-        "name": rule_title,
         "search": f"index=* {query}",
         "cron_schedule": "*/5 * * * *",
         "is_scheduled": "1",
@@ -44,35 +45,38 @@ def deploy_to_splunk(query, rule_path, splunk_host, splunk_port, username, passw
         "action.notable": "1"
     }
 
-    # 1. Intentar crear la alerta (POST)
-    response = requests.post(
-        base_url,
-        auth=(username, password),
-        data=payload,
-        verify=False
-    )
+    # 1. Verificar si la alerta ya existe (GET)
+    check_response = requests.get(specific_url, auth=(username, password), verify=False)
 
-    # 2. Si da error 409 (ya existe), actualizarla (POST a la URL de la alerta)
-    if response.status_code == 409:
-        print(f"[*] La alerta ya existe. Actualizando configuración...")
-        encoded_name = urllib.parse.quote(rule_title)
-        update_url = f"{base_url}/{encoded_name}"
-        
+    if check_response.status_code == 200:
+        # SI EXISTE: Actualizar (POST a la URL específica sin el parámetro "name")
+        print(f"[*] La alerta ya existe en Splunk. Actualizando configuración...")
         response = requests.post(
-            update_url,
+            specific_url,
+            auth=(username, password),
+            data=payload,
+            verify=False
+        )
+    else:
+        # NO EXISTE: Crear (POST a la URL base incluyendo el "name")
+        print(f"[*] La alerta no existe. Creándola por primera vez...")
+        payload["name"] = rule_title
+        response = requests.post(
+            base_url,
             auth=(username, password),
             data=payload,
             verify=False
         )
 
+    # 3. Verificar resultado
     if response.status_code in [200, 201]:
-        print(f"✅ ¡Alerta '{rule_title}' desplegada/actualizada exitosamente en Splunk!")
+        print(f"✅ ¡Alerta '{rule_title}' desplegada/actualizada con éxito en Splunk!")
     else:
         print(f"❌ Error al desplegar la alerta: {response.status_code}")
         print(response.text)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Despliega reglas Sigma en Splunk automáticamente.")
+    parser = argparse.ArgumentParser(description="Despliega reglas Sigma en Splunk de forma idempotente.")
     parser.add_argument("--rule", required=True, help="Ruta al archivo YAML de Sigma")
     parser.add_argument("--host", required=True, help="IP o dominio de Splunk")
     parser.add_argument("--port", default="8089", help="Puerto de la API (por defecto 8089)")
